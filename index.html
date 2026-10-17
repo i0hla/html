@@ -41,6 +41,12 @@
                 <i data-lucide="trash-2" class="w-4 h-4"></i>
                 <span>Clear</span>
             </button>
+
+            <!-- Swap Layout Button -->
+            <button onclick="toggleLayoutOrder()" class="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-sm font-medium rounded-lg transition-colors border border-zinc-800">
+                <i data-lucide="arrow-up-down" class="w-4 h-4 text-emerald-400"></i>
+                <span id="swapBtnText">Swap Order</span>
+            </button>
         </div>
 
         <!-- Main Open in New Tab Action -->
@@ -50,11 +56,11 @@
         </button>
     </div>
 
-    <!-- Main Workspace -->
-    <main class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+    <!-- Main Workspace (Default layout has Preview first, Code second on vertical/mobile view) -->
+    <main id="workspace" class="flex-1 flex flex-col-reverse md:flex-row overflow-hidden relative">
         
         <!-- Code Input Area -->
-        <div class="flex-1 flex flex-col min-h-[250px] border-r border-zinc-900 relative">
+        <div id="codePanel" class="flex-1 flex flex-col min-h-[250px] border-r border-zinc-900 relative">
             <div class="bg-zinc-950/80 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-zinc-500 border-b border-zinc-900 flex justify-between items-center">
                 <span>HTML Code Input</span>
                 <span id="charCount" class="font-mono text-[11px] text-zinc-600">0 chars</span>
@@ -70,7 +76,7 @@
         </div>
 
         <!-- Mini Live Preview Panel -->
-        <div class="flex-1 flex flex-col min-h-[250px] bg-black relative">
+        <div id="previewPanel" class="flex-1 flex flex-col min-h-[250px] bg-black relative border-b md:border-b-0 border-zinc-900">
             <div class="bg-zinc-950/80 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-zinc-500 border-b border-zinc-900 flex justify-between items-center">
                 <span>Mini Preview</span>
             </div>
@@ -99,6 +105,7 @@
         const htmlCodeInput = document.getElementById('htmlCode');
         const previewIframe = document.getElementById('previewIframe');
         const charCountDisplay = document.getElementById('charCount');
+        const workspace = document.getElementById('workspace');
 
         window.addEventListener('DOMContentLoaded', () => {
             const savedCode = localStorage.getItem('user_html_code');
@@ -107,8 +114,30 @@
             } else {
                 htmlCodeInput.value = '';
             }
+
+            // Restore layout order preference if set
+            const savedOrder = localStorage.getItem('user_layout_reversed');
+            if (savedOrder === 'false') {
+                workspace.classList.remove('flex-col-reverse');
+                workspace.classList.add('flex-col');
+            }
+
             updatePreview();
         });
+
+        function toggleLayoutOrder() {
+            if (workspace.classList.contains('flex-col-reverse')) {
+                workspace.classList.remove('flex-col-reverse');
+                workspace.classList.add('flex-col');
+                localStorage.setItem('user_layout_reversed', 'false');
+                showToast('Code on top, Preview below', 'arrow-up-down');
+            } else {
+                workspace.classList.remove('flex-col');
+                workspace.classList.add('flex-col-reverse');
+                localStorage.setItem('user_layout_reversed', 'true');
+                showToast('Preview on top, Code below', 'arrow-up-down');
+            }
+        }
 
         function updatePreview() {
             const code = htmlCodeInput.value;
