@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-black text-slate-200">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML Fullscreen Previewer</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .code-font {
+            font-family: 'Fira Code', monospace;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col overflow-hidden bg-black text-zinc-200">
+
+    <!-- Action Toolbar (Simple & Direct without Header/Navbar) -->
+    <div class="bg-zinc-950 border-b border-zinc-800 p-3 flex flex-wrap items-center justify-between gap-3 shadow-sm z-10">
+        <!-- Control Actions -->
+        <div class="flex items-center gap-2 flex-wrap">
+            <!-- Hidden File Input for Importing -->
+            <input type="file" id="fileInput" accept=".html,.htm,.txt" class="hidden" onchange="handleFileImport(event)">
+            
+            <button onclick="triggerImport()" class="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-sm font-medium rounded-lg transition-colors border border-zinc-800">
+                <i data-lucide="upload" class="w-4 h-4"></i>
+                <span>Import</span>
+            </button>
+
+            <button onclick="exportHTML()" class="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-sm font-medium rounded-lg transition-colors border border-zinc-800">
+                <i data-lucide="download" class="w-4 h-4"></i>
+                <span>Export</span>
+            </button>
+
+            <button onclick="clearCode()" class="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-red-950/40 hover:text-red-400 hover:border-red-900/50 text-zinc-400 text-sm font-medium rounded-lg transition-colors border border-zinc-800">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                <span>Clear</span>
+            </button>
+        </div>
+
+        <!-- Main Open in New Tab Action -->
+        <button onclick="openInNewTab()" class="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-lg shadow-lg shadow-emerald-950/50 transition-all active:scale-95">
+            <i data-lucide="external-link" class="w-4 h-4"></i>
+            <span>Open in New Tab</span>
+        </button>
+    </div>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+        
+        <!-- Code Input Area -->
+        <div class="flex-1 flex flex-col min-h-[250px] border-r border-zinc-900 relative">
+            <div class="bg-zinc-950/80 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-zinc-500 border-b border-zinc-900 flex justify-between items-center">
+                <span>HTML Code Input</span>
+                <span id="charCount" class="font-mono text-[11px] text-zinc-600">0 chars</span>
+            </div>
+            
+            <textarea 
+                id="htmlCode" 
+                class="flex-1 w-full p-4 bg-black text-zinc-300 code-font text-sm resize-none focus:outline-none focus:ring-1 focus:ring-zinc-700 leading-relaxed placeholder-zinc-700"
+                placeholder="<!-- Paste or write your HTML code here -->"
+                spellcheck="false"
+                oninput="updatePreview()"
+            ></textarea>
+        </div>
+
+        <!-- Mini Live Preview Panel -->
+        <div class="flex-1 flex flex-col min-h-[250px] bg-black relative">
+            <div class="bg-zinc-950/80 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-zinc-500 border-b border-zinc-900 flex justify-between items-center">
+                <span>Mini Preview</span>
+            </div>
+
+            <div class="flex-1 w-full h-full relative bg-white">
+                <iframe 
+                    id="previewIframe" 
+                    class="w-full h-full border-0" 
+                    sandbox="allow-scripts allow-modals allow-forms allow-same-origin"
+                    title="Live Preview"
+                ></iframe>
+            </div>
+        </div>
+    </main>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-zinc-900 border border-zinc-800 text-zinc-200 px-4 py-2 rounded-lg shadow-xl flex items-center gap-2 transform translate-y-20 opacity-0 transition-all duration-200 z-50 text-sm">
+        <i id="toastIcon" data-lucide="info" class="w-4 h-4 text-emerald-400"></i>
+        <span id="toastMessage">Notification</span>
+    </div>
+
+    <!-- Application Script -->
+    <script>
+        lucide.createIcons();
+
+        const htmlCodeInput = document.getElementById('htmlCode');
+        const previewIframe = document.getElementById('previewIframe');
+        const charCountDisplay = document.getElementById('charCount');
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedCode = localStorage.getItem('user_html_code');
+            if (savedCode !== null) {
+                htmlCodeInput.value = savedCode;
+            } else {
+                htmlCodeInput.value = '';
+            }
+            updatePreview();
+        });
+
+        function updatePreview() {
+            const code = htmlCodeInput.value;
+            localStorage.setItem('user_html_code', code);
+            charCountDisplay.textContent = `${code.length.toLocaleString()} chars`;
+
+            const iframeDoc = previewIframe.contentDocument || previewIframe.contentWindow.document;
+            iframeDoc.open();
+            iframeDoc.write(code);
+            iframeDoc.close();
+        }
+
+        function openInNewTab() {
+            const code = htmlCodeInput.value;
+            
+            if (!code.trim()) {
+                showToast('Please enter or paste HTML code first!', 'alert-circle');
+                return;
+            }
+
+            const blob = new Blob([code], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            
+            const newTab = window.open(url, '_blank');
+            if (newTab) {
+                newTab.focus();
+                showToast('Opened in new tab', 'external-link');
+            } else {
+                showToast('Pop-up blocked! Please allow pop-ups.', 'alert-circle');
+            }
+        }
+
+        function triggerImport() {
+            document.getElementById('fileInput').click();
+        }
+
+        function handleFileImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                htmlCodeInput.value = e.target.result;
+                updatePreview();
+                showToast(`Imported ${file.name}`, 'check-circle');
+            };
+            reader.onerror = function() {
+                showToast('Failed to read file!', 'alert-circle');
+            };
+            reader.readAsText(file);
+
+            event.target.value = '';
+        }
+
+        function exportHTML() {
+            const code = htmlCodeInput.value;
+            
+            if (!code.trim()) {
+                showToast('Nothing to export!', 'alert-circle');
+                return;
+            }
+
+            const blob = new Blob([code], { type: 'text/html;charset=utf-8' });
+            const tempLink = document.createElement('a');
+            tempLink.href = URL.createObjectURL(blob);
+            tempLink.download = 'index.html';
+            document.body.appendChild(tempLink);
+            tempLink.click();
+            document.body.removeChild(tempLink);
+            URL.revokeObjectURL(tempLink.href);
+
+            showToast('HTML exported', 'download');
+        }
+
+        function clearCode() {
+            htmlCodeInput.value = '';
+            updatePreview();
+            showToast('Cleared editor', 'trash-2');
+        }
+
+        function showToast(message, iconName = 'info') {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMessage');
+            const toastIcon = document.getElementById('toastIcon');
+
+            toastMsg.textContent = message;
+            toastIcon.setAttribute('data-lucide', iconName);
+            lucide.createIcons();
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2500);
+        }
+    </script>
+</body>
+</html>
